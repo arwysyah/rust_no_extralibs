@@ -2,8 +2,33 @@
 use std::net::{TcpListener, TcpStream};
 use std::io::{Read,Write};
 use std::result;
+use std::fmt;
 type Result<T> = result::Result<(),(T)>;
 
+struct Sensitive <T> {
+    inner: T
+}
+impl <T> Sensitive <T> {
+    fn new(inner:T)->Self {
+        Self{inner}
+    }
+}
+
+
+
+const SAFE_MODE: bool = true;
+
+impl <T: fmt::Display> fmt::Display for Sensitive<T> {
+
+    fn fmt(&self,f:&mut fmt::Formatter<'_>)->fmt::Result {
+        if SAFE_MODE {
+            writeln!(f,"[REDACTED]")
+        }else{
+            writeln!(f,"{inner}",inner = self.inner)
+        }
+    }
+
+}
 fn handle_client(mut stream: TcpStream) {
         
     let mut buffer = [0;1024];
@@ -24,10 +49,10 @@ fn handle_client(mut stream: TcpStream) {
 fn main() -> Result<()> {
     let address = "127.0.0.1:8000";
     let listener = TcpListener::bind(address).map_err(|err|{
-        eprintln!("Error connect to {address} due to {err}");
+        eprintln!("Error connect to {} due to :{}", Sensitive::new(address),Sensitive::new(err));
     })?;
 
-    println!("INFO :: Listening to {address}");
+    println!("INFO: Listening to {}",Sensitive::new(address));
 
     for stream in listener.incoming() {
         match stream {
