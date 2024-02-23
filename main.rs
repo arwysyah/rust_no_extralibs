@@ -4,6 +4,7 @@ use std::io::{Read,Write};
 use std::result;
 use std::fmt;
 use std::thread;
+use std::sync::mpsc::{Receiver,Sender,channel};
 type Result<T> = result::Result<(),(T)>;
 
 // struct Sensitive <T> {
@@ -34,29 +35,31 @@ impl <T: fmt::Display> fmt::Display for Sensitive<T> {
     }
 
 }
-fn handle_client(mut stream: TcpStream) {
-        
-    let mut buffer = [0;1024];
-    let bytes_read = stream.read(&mut buffer).expect("Failed to read from stream");
+fn server(_messages: Receiver<Message>)->Result <()>{
+todo!();
+} 
 
-    if bytes_read > 0{
-        let message = String::from_utf8_lossy(&buffer[..bytes_read]);
-        println!("Received {}",message);
-    }else{
-        println!("no data received");
+
+fn client_spawn (mut stream :TcpStream,message:Sender<Message>)-> Result<()> {
+    // message.send(Message::ClientConnected).map(|err|{
+    //     eprintln!("ERROR: could not send message to server thread due to : {err}")
+    // })?;
+    let _ = writeln!(stream, "hello its ok").map_err(|err|{
+    eprintln!("its seems there is something wrong {err}");
+    });
+
+    loop {
+        unimplemented!();
     }
-    // print!();
-    // ...
+    todo!();
 }
 
 
-fn client_spawn (mut stream :TcpStream)-> Result<()> {
 
-   let _ =   writeln!(stream, "hello its ok").map_err(|err|{
-                    eprintln!("its seems there is something wrong {err}");
-                });
-     todo!();
-
+enum Message {
+    ClientConnected,
+    ClientDisconnected,
+    NewMessage,
 }
 
 fn main() -> Result<()> {
@@ -66,12 +69,14 @@ fn main() -> Result<()> {
     })?;
 
     println!("INFO: Listening to {}",Sensitive(address));
-
+    let (message_sender,message_receiver) = channel();
+    thread::spawn(|| server(message_receiver));
     for stream in listener.incoming() {
             match stream {
-           
+         
         Ok(stream) => {
-            thread::spawn( || client_spawn(stream));
+ let message_sender = message_sender.clone(); 
+            thread::spawn( || client_spawn(stream,message_sender));
         }
         Err(err)=>{
                 eprintln!("ERROR: could not accept connection: {err}")
